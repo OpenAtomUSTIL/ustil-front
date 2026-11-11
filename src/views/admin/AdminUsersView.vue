@@ -8,6 +8,7 @@ import EmptyState from '@/components/EmptyState.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
 import { formatDate, roleLabel } from '@/utils/format'
+import { KEYWORD_MAX } from '@/utils/limits'
 
 const auth = useAuthStore()
 const toast = useToastStore()
@@ -78,6 +79,8 @@ function changeRole(user: AdminUser, event: Event): void {
   const select = event.target as HTMLSelectElement
   const role = select.value as UpdateUserRoleRequest['role']
   if (!role || role === user.role) return
+  // 失败时下拉框必须显示服务器仍然保存的角色。
+  select.value = user.role
   void runAction(user.id, () => adminApi.updateUserRole(user.id, { role }), '角色已更新')
 }
 
@@ -111,7 +114,7 @@ onMounted(load)
 
     <form class="filter-bar" role="search" @submit.prevent="search">
       <div class="field">
-        <input v-model="keyword" type="search" placeholder="搜索昵称 / 邮箱 / 手机号">
+        <input v-model="keyword" type="search" :maxlength="KEYWORD_MAX" placeholder="搜索昵称 / 邮箱 / 手机号">
       </div>
       <div class="field">
         <select v-model="roleFilter">
@@ -183,7 +186,7 @@ onMounted(load)
               >
                 提拔
               </button>
-              <button class="btn btn-sm btn-ghost" type="button" :disabled="busyId === user.id" @click="toggleBan(user)">
+              <button v-if="auth.isAdmin && user.role !== 'ADMIN'" class="btn btn-sm btn-ghost" type="button" :disabled="busyId === user.id" @click="toggleBan(user)">
                 {{ user.status === 'BANNED' ? '解封' : '封禁' }}
               </button>
               <button

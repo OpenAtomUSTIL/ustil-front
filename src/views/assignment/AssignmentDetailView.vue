@@ -3,10 +3,12 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { describeError, isForbidden } from '@/api/error'
 import { assignmentsApi } from '@/api/request'
-import type { AssignmentItem, SubmissionView } from '@/api/types'
+import type { AssignmentItem, AttachmentView, SubmissionView } from '@/api/types'
 import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
 import { formatCountdown, formatDateTime, formatSize, roleLabel, timeAgo } from '@/utils/format'
+import { downloadAttachmentFile } from '@/utils/download'
+import { NOTE_MAX } from '@/utils/limits'
 import { SUBMIT_EXTENSIONS } from '@/utils/upload'
 import AppAvatar from '@/components/AppAvatar.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -39,7 +41,17 @@ const isPublisher = computed(
   () => auth.user !== null && assignment.value?.publisher.id === auth.user.id,
 )
 /** 入口显隐仅为体验优化，权限以后端为准 */
-const canViewSubmissions = computed(() => auth.isAdmin || isPublisher.value)
+const canViewSubmissions = computed(() => auth.isAdmin || (auth.canManageContent && isPublisher.value))
+/** 编辑入口：发布者或 ADMIN 且角色属于 ALUMNI / WHEEL / ADMIN（与后端 PATCH 权限一致） */
+const canEdit = computed(() => (isPublisher.value || auth.isAdmin) && auth.canManageContent)
+
+async function download(attachment: AttachmentView): Promise<void> {
+  try {
+    await downloadAttachmentFile(attachment.id, attachment.originalName)
+  } catch (err) {
+    toast.show(describeError(err))
+  }
+}
 
 async function load(): Promise<void> {
   loading.value = true
@@ -150,6 +162,11 @@ onBeforeUnmount(() => {
 
       <div class="post-block">
         <MarkdownBody class="pb-body" :content="assignment.description" />
+        <div v-if="canEdit" class="pb-actions">
+          <RouterLink class="btn btn-secondary" :to="{ name: 'assignment-edit', params: { id: assignment.id } }">
+            编辑
+          </RouterLink>
+        </div>
       </div>
 
       <section class="composer">
@@ -168,6 +185,7 @@ onBeforeUnmount(() => {
               id="submit-note"
               v-model="note"
               style="min-height: 5.5rem"
+              :maxlength="NOTE_MAX"
               placeholder="想让发布者了解的内容，例如运行方式、未完成的部分"
             />
           </div>
@@ -185,7 +203,7 @@ onBeforeUnmount(() => {
           <div class="meta-rows">
             <span>
               <span class="k">文件</span>
-              <a class="v" :href="assignment.mySubmission.attachment.url" style="color: var(--clay-dark); text-decoration: underline; text-underline-offset: 3px">
+              <a class="v" :href="assignment.mySubmission.attachment.url" style="color: var(--clay-dark); text-decoration: underline; text-underline-offset: 3px" @click.prevent="download(assignment.mySubmission.attachment)">
                 {{ assignment.mySubmission.attachment.originalName }}
               </a>
               （{{ formatSize(assignment.mySubmission.attachment.size) }}）
@@ -221,7 +239,7 @@ onBeforeUnmount(() => {
           <div class="r-body">
             <p>
               附件：
-              <a :href="item.attachment.url" style="color: var(--clay-dark); text-decoration: underline; text-underline-offset: 3px">
+              <a :href="item.attachment.url" style="color: var(--clay-dark); text-decoration: underline; text-underline-offset: 3px" @click.prevent="download(item.attachment)">
                 {{ item.attachment.originalName }}
               </a>
               （{{ formatSize(item.attachment.size) }}）
