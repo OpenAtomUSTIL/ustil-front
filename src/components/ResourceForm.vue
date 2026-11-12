@@ -4,6 +4,7 @@
 import { ref, watch } from 'vue'
 import type { ResourceCategory, ResourceWriteRequest } from '@/api/types'
 import TagInput from '@/components/TagInput.vue'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import { RESOURCE_URL_MAX, TITLE_MAX, checkResourceUrl, checkTags, checkTitle } from '@/utils/limits'
 
 const props = defineProps<{
@@ -103,12 +104,12 @@ function submit(): void {
       >
     </div>
     <div class="field">
-      <label for="resource-description">描述</label>
-      <textarea
-        id="resource-description"
+      <label>描述</label>
+      <MarkdownEditor
         v-model="description"
-        placeholder="这个资源是什么、适合谁（选填）"
-        style="min-height: 7rem"
+        aria-label="描述"
+        min-height="7rem"
+        placeholder="这个资源是什么、适合谁（选填，支持 Markdown）"
       />
     </div>
     <div class="field">

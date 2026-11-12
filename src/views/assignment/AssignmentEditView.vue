@@ -5,6 +5,7 @@ import { describeError, isForbidden } from '@/api/error'
 import { assignmentsApi } from '@/api/request'
 import { useToastStore } from '@/stores/toast'
 import { toDatetimeLocalValue } from '@/utils/format'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import { TITLE_MAX, checkTitle } from '@/utils/limits'
 
 const route = useRoute()
@@ -62,6 +63,11 @@ async function submit(): Promise<void> {
     return
   }
 
+  if (!description.value.trim()) {
+    error.value = '请填写任务说明'
+    return
+  }
+
   submitting.value = true
   try {
     // 本地时间选择器 → ISO 8601 UTC 字符串提交给后端；失败保留输入并展示原因
@@ -95,14 +101,13 @@ async function submit(): Promise<void> {
         <input id="assignment-title" v-model="title" type="text" required :maxlength="TITLE_MAX" placeholder="例如：第三周练习 —— 实现一个简易词法分析器">
       </div>
       <div class="field">
-        <label for="assignment-description">任务说明（Markdown）</label>
-        <textarea
-          id="assignment-description"
+        <label>任务说明（Markdown）</label>
+        <MarkdownEditor
           v-model="description"
-          required
+          aria-label="任务说明（Markdown）"
+          min-height="14rem"
           placeholder="说明任务目标、要求与提交物格式"
         />
-        <div class="hint">支持 **粗体**、`代码`、> 引用、列表与链接。空行分段。</div>
       </div>
       <div class="field">
         <label for="assignment-start">开始时间（本地时区）</label>

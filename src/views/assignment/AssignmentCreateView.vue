@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { describeError, isForbidden } from '@/api/error'
 import { assignmentsApi } from '@/api/request'
 import { useToastStore } from '@/stores/toast'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import { TITLE_MAX, checkTitle } from '@/utils/limits'
 
 const router = useRouter()
@@ -34,6 +35,11 @@ async function submit(): Promise<void> {
   }
   if (deadline.getTime() <= start.getTime()) {
     error.value = '截止时间必须晚于开始时间'
+    return
+  }
+
+  if (!description.value.trim()) {
+    error.value = '请填写任务说明'
     return
   }
 
@@ -73,11 +79,11 @@ async function submit(): Promise<void> {
         <input id="assignment-title" v-model="title" type="text" required :maxlength="TITLE_MAX" placeholder="例如：第三周练习 —— 实现一个简易词法分析器">
       </div>
       <div class="field">
-        <label for="assignment-description">任务说明（Markdown）</label>
-        <textarea
-          id="assignment-description"
+        <label>任务说明（Markdown）</label>
+        <MarkdownEditor
           v-model="description"
-          required
+          aria-label="任务说明（Markdown）"
+          min-height="14rem"
           placeholder="说明任务目标、要求与提交物格式"
         />
       </div>

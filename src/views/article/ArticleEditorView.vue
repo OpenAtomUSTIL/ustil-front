@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { describeError, isForbidden } from '@/api/error'
 import { articlesApi } from '@/api/request'
 import { useToastStore } from '@/stores/toast'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import TagInput from '@/components/TagInput.vue'
 import { TITLE_MAX, checkTags, checkTitle } from '@/utils/limits'
 
@@ -53,6 +54,10 @@ async function submit(): Promise<void> {
     error.value = tagsProblem
     return
   }
+  if (!content.value.trim()) {
+    error.value = '正文不能为空'
+    return
+  }
   submitting.value = true
   try {
     const payload = {
@@ -95,11 +100,11 @@ async function submit(): Promise<void> {
         <input id="article-title" v-model="title" type="text" required :maxlength="TITLE_MAX" placeholder="一句话说清这篇文章讲什么">
       </div>
       <div class="field">
-        <label for="article-content">正文（Markdown）</label>
-        <textarea
-          id="article-content"
+        <label>正文（Markdown）</label>
+        <MarkdownEditor
           v-model="content"
-          required
+          aria-label="正文（Markdown）"
+          min-height="20rem"
           placeholder="支持 **粗体**、`代码`、> 引用、列表与链接。空行分段。"
         />
       </div>
