@@ -4,14 +4,14 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useToastStore } from '@/stores/toast'
-import { useUiStore } from '@/stores/ui'
+import { themeMode, toggleTheme } from '@/utils/theme'
 import AppAvatar from '@/components/AppAvatar.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
 const notifications = useNotificationsStore()
 const toast = useToastStore()
-const ui = useUiStore()
+
 
 const scrolled = ref(false)
 const menuOpen = ref(false)
@@ -91,10 +91,10 @@ async function logout(): Promise<void> {
         </button>
 
         <nav id="nav-main" class="nav-main" :class="{ open: menuOpen }" aria-label="主导航">
-          <RouterLink class="nav-link" :to="{ name: 'home' }">首页</RouterLink>
-          <RouterLink class="nav-link" :to="{ name: 'articles' }">文章</RouterLink>
+          <RouterLink v-if="auth.isLoggedIn" class="nav-link" :to="{ name: 'home' }">首页</RouterLink>
+          <RouterLink v-if="auth.isLoggedIn" class="nav-link" :to="{ name: 'articles' }">文章</RouterLink>
           <RouterLink v-if="auth.canViewAssignments" class="nav-link" :to="{ name: 'assignments' }">作业</RouterLink>
-          <RouterLink class="nav-link" :to="{ name: 'issues' }">讨论</RouterLink>
+          <RouterLink v-if="auth.isLoggedIn" class="nav-link" :to="{ name: 'issues' }">讨论</RouterLink>
 
           <!-- 发布入口显隐仅为体验优化，权限以后端为准 -->
           <div v-if="auth.canCreateIssue" ref="publishItem" class="nav-item" :class="{ open: publishOpen }">
@@ -115,7 +115,7 @@ async function logout(): Promise<void> {
               <RouterLink role="menuitem" :to="{ name: 'issue-new' }" @click="publishOpen = false">
                 发起讨论<span>提出问题、分享进展</span>
               </RouterLink>
-              <RouterLink v-if="auth.canManageContent" role="menuitem" :to="{ name: 'article-new' }" @click="publishOpen = false">
+              <RouterLink v-if="auth.canPublishArticle" role="menuitem" :to="{ name: 'article-new' }" @click="publishOpen = false">
                 发布文章<span>面向社区的技术长文</span>
               </RouterLink>
               <RouterLink v-if="auth.canManageContent" role="menuitem" :to="{ name: 'assignment-new' }" @click="publishOpen = false">
@@ -129,6 +129,27 @@ async function logout(): Promise<void> {
         </nav>
 
         <div class="nav-actions">
+          <button
+            class="btn btn-ghost theme-btn"
+            type="button"
+            :aria-label="themeMode === 'dark' ? '切换到浅色模式' : '切换到深色模式'"
+            :title="themeMode === 'dark' ? '浅色模式' : '深色模式'"
+            @click="toggleTheme"
+          >
+            <svg v-if="themeMode === 'dark'" class="theme-ic" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8" />
+              <path
+                d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M5.2 18.8l1.4-1.4M17.4 6.6l1.4-1.4"
+                stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+              />
+            </svg>
+            <svg v-else class="theme-ic" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M20.2 14.4A8.6 8.6 0 0 1 9.6 3.8a8.6 8.6 0 1 0 10.6 10.6Z"
+                fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"
+              />
+            </svg>
+          </button>
           <template v-if="auth.isLoggedIn">
             <RouterLink v-if="auth.canAccessAdmin" class="btn btn-ghost" :to="{ name: 'admin-dashboard' }">
               管理后台
@@ -143,10 +164,10 @@ async function logout(): Promise<void> {
               </svg>
               <span v-if="notifications.unreadCount > 0" class="bell-badge">{{ unreadLabel }}</span>
             </RouterLink>
-            <button class="btn btn-ghost" type="button" title="个人中心" @click="ui.openProfile()">
+            <RouterLink class="btn btn-ghost" title="个人中心" :to="{ name: 'user-profile', params: { id: auth.user?.id } }">
               <AppAvatar :nickname="nickname" :avatar-url="avatarUrl" :user-id="userId" />
               {{ nickname }}
-            </button>
+            </RouterLink>
             <button class="btn btn-ghost" type="button" @click="logout">退出</button>
           </template>
           <template v-else>
@@ -167,6 +188,12 @@ async function logout(): Promise<void> {
 .bell-btn .ic {
   width: 1.15em;
   height: 1.15em;
+}
+
+.theme-btn .theme-ic {
+  width: 1.15em;
+  height: 1.15em;
+  display: block;
 }
 
 .bell-badge {

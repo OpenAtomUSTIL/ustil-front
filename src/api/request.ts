@@ -9,6 +9,8 @@
    ============================================================ */
 
 import type {
+  UserProfile,
+  ActivityView,
   AdminStats,
   AdminUser,
   AnnouncementCreateRequest,
@@ -40,6 +42,8 @@ import type {
   Page,
   PageQuery,
   PasswordChangeRequest,
+  PinnedItem,
+  ProfileReplyItem,
   RegisterRequest,
   RequestLogItem,
   ResourceItem,
@@ -242,6 +246,16 @@ export const authApi = {
 
 export const usersApi = {
   getUser: (id: string) => request<UserPublic>(`/users/${id}`),
+  /** 个人主页（含统计/标签/置顶） */
+  getProfile: (id: string) => request<UserProfile>(`/users/${id}/profile`),
+  /** 更新个人主页（bio/readme/置顶） */
+  updateProfilePage: (payload: { bio?: string | null; profileReadme?: string | null; pinnedItems?: Pick<PinnedItem, 'type' | 'id'>[] }) =>
+    request<void>('/users/me/profile-page', { method: 'PUT', body: payload }),
+  /** 活跃热力图 */
+  getActivity: (id: string) => request<ActivityView>(`/users/${id}/activity`),
+  /** 个人主页 · 回复 Tab */
+  getReplies: (id: string, query: PageQuery) =>
+    request<Page<ProfileReplyItem>>(`/users/${id}/replies`, { query }),
   updateMe: (payload: UpdateProfileRequest) =>
     request<UserSelf>('/users/me', { method: 'PATCH', body: payload }),
   updateIdentifier: (payload: UpdateIdentifierRequest) =>
@@ -266,6 +280,12 @@ export const articlesApi = {
   update: (id: string, payload: ArticleWriteRequest) =>
     request<void>(`/articles/${id}`, { method: 'PATCH', body: payload }),
   remove: (id: string) => request<void>(`/articles/${id}`, { method: 'DELETE' }),
+  /** 审核队列（WHEEL/ADMIN） */
+  listPending: (query: PageQuery) =>
+    request<Page<ArticleListItem>>('/articles/pending', { query }),
+  /** 审核操作：approve/reject/hide/unhide */
+  review: (id: string, payload: { action: 'approve' | 'reject' | 'hide' | 'unhide'; note?: string }) =>
+    request<ArticleDetail>(`/articles/${id}/review`, { method: 'POST', body: payload }),
 }
 
 export const assignmentsApi = {
@@ -302,8 +322,8 @@ export const assignmentsApi = {
 }
 
 export const issuesApi = {
-  /** tag 可选：按标签过滤 */
-  list: (query: PageQuery & { status?: IssueStatus; keyword?: string; tag?: string }) =>
+  /** tag 可选：按标签过滤；authorId 可选：按作者过滤（个人主页讨论 Tab） */
+  list: (query: PageQuery & { status?: IssueStatus; keyword?: string; tag?: string; authorId?: string }) =>
     request<Page<IssueListItem>>('/issues', { query }),
   get: (id: string) => request<IssueDetail>(`/issues/${id}`),
   create: (payload: CreateIssueRequest) => request<void>('/issues', { method: 'POST', body: payload }),
@@ -357,6 +377,12 @@ export const adminApi = {
     request<void>(`/admin/trash/${type}/${id}/restore`, { method: 'POST' }),
   /** 全站接口 + 权限总览 */
   apiRegistry: () => request<ApiRegistryItem[]>('/admin/api-registry'),
+  /** 文章审核队列 */
+  listPendingArticles: (query: PageQuery) =>
+    request<Page<ArticleListItem>>('/articles/pending', { query }),
+  /** 审核文章 */
+  reviewArticle: (id: string, payload: { action: 'approve' | 'reject' | 'hide' | 'unhide'; note?: string }) =>
+    request<ArticleDetail>(`/articles/${id}/review`, { method: 'POST', body: payload }),
 }
 
 /** 文件内容预览地址（同源 <img> 直接加载，带 cookie，不经 JS 读写）
@@ -385,7 +411,8 @@ export const notificationsApi = {
 }
 
 export const resourcesApi = {
-  list: (query: PageQuery & { category?: string; keyword?: string; tag?: string }) =>
+  /** creatorId 可选：按创建者过滤（个人主页资源 Tab） */
+  list: (query: PageQuery & { category?: string; keyword?: string; tag?: string; creatorId?: string }) =>
     request<Page<ResourceItem>>('/resources', { query }),
   get: (id: string) => request<ResourceItem>(`/resources/${id}`),
   create: (payload: ResourceWriteRequest) =>
