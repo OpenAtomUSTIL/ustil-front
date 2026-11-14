@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { formatReadingTime } from '@/utils/reading-time'
+import { contentPathId } from '@/utils/content-path'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { describeError, isForbidden } from '@/api/error'
@@ -51,8 +53,8 @@ async function load(): Promise<void> {
   try {
     article.value = await articlesApi.get(articleId.value)
     // 旧 id 链接 → 301 到 slug 规范地址
-    if (article.value && route.params.id !== article.value.slug) {
-      void router.replace({ name: 'article-detail', params: { id: article.value.slug } })
+    if (article.value && route.params.id !== contentPathId(article.value)) {
+      void router.replace({ name: 'article-detail', params: { id: contentPathId(article.value) } })
     }
   } catch (err) {
     if (isForbidden(err)) {
@@ -114,6 +116,7 @@ onMounted(load)
             {{ article.author.nickname }} · {{ roleLabel(article.author.role) }}
           </RouterLink>
           <span class="num">{{ timeAgo(article.createdAt) }}</span>
+          <span v-if="formatReadingTime(article.readingMinutes)" class="num">{{ formatReadingTime(article.readingMinutes) }}</span>
           <span class="num">更新于 {{ formatDateTime(article.updatedAt) }}</span>
         </div>
       </div>
@@ -124,7 +127,7 @@ onMounted(load)
           <RouterLink
             v-if="canEdit"
             class="btn btn-secondary"
-            :to="{ name: 'article-edit', params: { id: article.slug } }"
+            :to="{ name: 'article-edit', params: { id: contentPathId(article) } }"
           >
             编辑
           </RouterLink>

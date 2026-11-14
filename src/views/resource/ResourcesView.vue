@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { contentPathId } from '@/utils/content-path'
 /* 资源库：分类 Tab + keyword 搜索 + tag 过滤 + 分页卡片；外链新窗口打开 */
 import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -81,7 +82,11 @@ function canManage(item: ResourceItem): boolean {
   return auth.isAdmin || (auth.isLoggedIn && auth.user?.id === item.creatorId)
 }
 
+// 只展示最近一次筛选的响应，防止慢请求覆盖新结果。
+let loadVersion = 0
+
 async function load(): Promise<void> {
+  const version = ++loadVersion
   loading.value = true
   error.value = ''
   confirmDeleteId.value = null
@@ -93,6 +98,7 @@ async function load(): Promise<void> {
       category: queryCategory() || undefined,
       tag: queryTag() || undefined,
     })
+    if (version !== loadVersion) return
     items.value = result.items
     total.value = result.total
     page.value = result.page
@@ -100,13 +106,14 @@ async function load(): Promise<void> {
     category.value = queryCategory()
     tag.value = queryTag()
   } catch (err) {
+    if (version !== loadVersion) return
     if (isForbidden(err)) {
       void router.push({ name: 'forbidden' })
       return
     }
     error.value = describeError(err)
   } finally {
-    loading.value = false
+    if (version === loadVersion) loading.value = false
   }
 }
 
@@ -235,7 +242,7 @@ onMounted(load)
                 打开链接 ↗
               </a>
               <template v-if="canManage(item)">
-                <RouterLink class="btn btn-ghost btn-sm" :to="{ name: 'resource-edit', params: { id: item.slug } }">
+                <RouterLink class="btn btn-ghost btn-sm" :to="{ name: 'resource-edit', params: { id: contentPathId(item) } }">
                   编辑
                 </RouterLink>
                 <template v-if="confirmDeleteId === item.id">
